@@ -51,8 +51,6 @@ public class GameManager : MonoBehaviour
     [HideInInspector]
     public bool hammerIsActive = false;
 
-    GridLayoutGroup gridLayout;
-
     #endregion
 
     private void Awake()
@@ -65,8 +63,6 @@ public class GameManager : MonoBehaviour
 
     private void OnEnable()
     {
-        gridLayout = gridTr.GetComponent<GridLayoutGroup>();
-
         // save all cells
         gridCells = new List<GridCell>(gridTr.childCount);
         gridCells.AddRange(gridTr.GetComponentsInChildren<GridCell>());
@@ -660,14 +656,10 @@ public class GameManager : MonoBehaviour
     public bool CanBeActivated(GridCell nextCell)
     {
         GridCell prevCell = currentlyActiveCells[currentlyActiveCells.Count - 1];
-        int indexOfNextCell = gridCells.IndexOf(nextCell);
-        int indexOfPrevCell = gridCells.IndexOf(prevCell);
-        int indexDif = Mathf.Abs(indexOfNextCell - indexOfPrevCell);
-        float distanceBetweenCells = Vector2.Distance(nextCell.transform.position, prevCell.transform.position);
 
         // if cells are near each other horizontally or vertically then all good
         // next cell can be placed there
-        if ((indexDif == 1 && distanceBetweenCells < 2 * gridLayout.cellSize.x) || indexDif == numberOfColumnsInGrid)
+        if (TwoCellsAreNear(prevCell, nextCell))
             return true;
 
         return false;
@@ -678,7 +670,6 @@ public class GameManager : MonoBehaviour
         // get index for current cell
         int indexOfFirstCell = gridCells.IndexOf(cell);
         GridCell curCell = null;
-        float distanceBetweenCells = 0f;
 
         // above cell
         // it has to be in the grid bounds
@@ -715,15 +706,10 @@ public class GameManager : MonoBehaviour
         if (indexOfFirstCell - 1 >= 0)
         {
             curCell = gridCells[indexOfFirstCell - 1];
-            distanceBetweenCells = Vector2.Distance(cell.transform.position, curCell.transform.position);
 
             // if same color,
-            // check distance to ensure that these cells near each other
-            // (important in case when one of these cells is on the edge)
-            // it shouldn't be more than width of two cells 
-            // (actually it has to be equal to width of one cell + space between cells, but becuase of float
-            // numbers we take it with some reserve)
-            if (SameColors(curCell.GetColor(), cell.GetColor()) && distanceBetweenCells < 2 * gridLayout.cellSize.x)
+            // ensure that these cells in the same row
+            if (SameColors(curCell.GetColor(), cell.GetColor()) && TwoCellsInTheSameRow(cell, curCell))
             {
                 if (!sameColoredCells.Contains(cell))
                     sameColoredCells.Add(cell);
@@ -737,15 +723,10 @@ public class GameManager : MonoBehaviour
         if (indexOfFirstCell + 1 < gridCells.Count)
         {
             curCell = gridCells[indexOfFirstCell + 1];
-            distanceBetweenCells = Vector2.Distance(cell.transform.position, curCell.transform.position);
 
             // if same color,
-            // check distance to ensure that these cells near each other
-            // (important in case when one of these cells is on the edge)
-            // it shouldn't be more than width of two cells 
-            // (actually it has to be equal to width of one cell + space between cells, but becuase of float
-            // numbers we take it with some reserve)
-            if (SameColors(curCell.GetColor(), cell.GetColor()) && distanceBetweenCells < 2 * gridLayout.cellSize.x)
+            // ensure that these cells in the same row
+            if (SameColors(curCell.GetColor(), cell.GetColor()) && TwoCellsInTheSameRow(cell, curCell))
             {
                 if (!sameColoredCells.Contains(cell))
                     sameColoredCells.Add(cell);
@@ -794,7 +775,6 @@ public class GameManager : MonoBehaviour
 
                 if (TwoCellsAreNear(cell, nextCell))
                 {
-                    Debug.Log(gridCells.IndexOf(cell) + " Cell is near to the " + gridCells.IndexOf(nextCell) + " Cell");
                     numberOfCellsInLine++;
                     break;
                 }
