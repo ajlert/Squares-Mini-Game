@@ -368,53 +368,54 @@ public class GameManager : MonoBehaviour
             // check if this cell is still fixed (may be not fixed already after destroying)
             if (firstCell.isFixed)
             {
-                // get all cells with the same color which are near to current cell
-                CheckNearestCells(firstCell, detectedCells);
+                // add current cell to the list
+                detectedCells.Add(firstCell);
 
                 int startCount = detectedCells.Count;
                 int endCount = 0;
 
-                // if we have enough amount of cells to destroy them
-                if (startCount >= minNumberOfSameColoredCells)
+                // get current color
+                Color curColor = detectedCells[0].GetColor();
+
+                // do it until we won't be able to find cells with the same color
+                // and near already found cells, i.t. until start count of found cells
+                // become equal to end count of found cells
+                while (startCount != endCount)
                 {
-                    // get current color, as it is the same for all cells in this list
-                    // we take the color from first cell
-                    Color curColor = detectedCells[0].GetColor();
+                    // update start count of detected cells
+                    startCount = detectedCells.Count;
 
-                    // do it until we won't be able to find cells with the same color
-                    // and near already found cells, i.t. until start count of found cells
-                    // become equal to end count of found cells
-                    while (startCount != endCount)
+                    // go again through all fixed cells
+                    for (int j = 0; j < fixedCells.Count; j++)
                     {
-                        // update start count of detected cells
-                        startCount = detectedCells.Count;
+                        GridCell nextFixedCell = fixedCells[j];
 
-                        // go again through all fixed cells
-                        for (int j = 0; j < fixedCells.Count; j++)
+                        // if we have no such a cell in list but it has the same color
+                        if (!detectedCells.Contains(nextFixedCell) && SameColors(nextFixedCell.GetColor(), curColor))
                         {
-                            GridCell nextFixedCell = fixedCells[j];
-
-                            // if we have no such a cell in list but it has the same color
-                            if (!detectedCells.Contains(nextFixedCell) && SameColors(nextFixedCell.GetColor(), curColor))
+                            // go through all cells which we have found earlier
+                            for (int k = 0; k < detectedCells.Count; k++)
                             {
-                                // go through all cells which we have found earlier
-                                for (int k = 0; k < detectedCells.Count; k++)
+                                GridCell foundCell = detectedCells[k];
+                                // here we should check if the next cell is close to
+                                // the one of the cells which we have found earlier
+                                if (TwoCellsAreNear(foundCell, nextFixedCell))
                                 {
-                                    GridCell foundCell = detectedCells[k];
-                                    // here we should check if the next cell is close to
-                                    // the one of the cells which we have found earlier
-                                    if (TwoCellsAreNear(foundCell, nextFixedCell))
-                                    {
-                                        detectedCells.Add(nextFixedCell);
-                                        break;
-                                    }
+                                    detectedCells.Add(nextFixedCell);
+                                    break;
                                 }
                             }
                         }
-                        // update end count of found cells
-                        endCount = detectedCells.Count;
                     }
+                    // update end count of found cells
+                    endCount = detectedCells.Count;
+                }
 
+                // if we have found more than 3 cells with the same color
+                // and which are near each other, then destroy them and
+                // update earned points
+                if (endCount >= minNumberOfSameColoredCells)
+                {
                     // reset all detected cells
                     for (int k = 0; k < detectedCells.Count; k++)
                     {
@@ -464,19 +465,10 @@ public class GameManager : MonoBehaviour
             if (currentCubeSequence.Count == 1)
                 return;
 
-            // clear all empty cells which have been found on the previous step
-            emptyCells.Clear();
+            // add current cell to the list
+            emptyCells.Add(firstCell);
 
-            // get all empty cells which are near to current cell
-            CheckNearestCells(firstCell, emptyCells);
             int startCount = emptyCells.Count;
-
-            // if number of empty cells already more or equals
-            // to the length of the current sequence and these cells form a line
-            // so that we can put all sequence to the grid then we are done here
-            if (startCount >= currentSequenceLength && CheckIfCellsFormContinuousLine(emptyCells))
-                return;
-
             int endCount = 0;
 
             // do it until we won't be able to find empty cells near already found cells, 
@@ -524,6 +516,9 @@ public class GameManager : MonoBehaviour
                 if (endCount >= currentSequenceLength && CheckIfCellsFormContinuousLine(emptyCells))
                     return;
             }
+
+            // clear all empty cells which have been found on the previous step
+            emptyCells.Clear();
         }
 
         GameOver();
@@ -663,77 +658,6 @@ public class GameManager : MonoBehaviour
             return true;
 
         return false;
-    }
-
-    void CheckNearestCells(GridCell cell, List<GridCell> sameColoredCells)
-    {
-        // get index for current cell
-        int indexOfFirstCell = gridCells.IndexOf(cell);
-        GridCell curCell = null;
-
-        // above cell
-        // it has to be in the grid bounds
-        if (indexOfFirstCell - numberOfColumnsInGrid >= 0 && indexOfFirstCell - numberOfColumnsInGrid < gridCells.Count)
-        {
-            curCell = gridCells[indexOfFirstCell - numberOfColumnsInGrid];
-
-            // if same color
-            if (SameColors(curCell.GetColor(), cell.GetColor()))
-            {
-                if (!sameColoredCells.Contains(cell))
-                    sameColoredCells.Add(cell);
-                if (!sameColoredCells.Contains(curCell))
-                    sameColoredCells.Add(curCell);
-            }
-        }
-        // below cell
-        // it has to be in the grid bounds
-        if (indexOfFirstCell + numberOfColumnsInGrid >= 0 && indexOfFirstCell + numberOfColumnsInGrid < gridCells.Count)
-        {
-            curCell = gridCells[indexOfFirstCell + numberOfColumnsInGrid];
-
-            // if same color
-            if (SameColors(curCell.GetColor(), cell.GetColor()))
-            {
-                if (!sameColoredCells.Contains(cell))
-                    sameColoredCells.Add(cell);
-                if (!sameColoredCells.Contains(curCell))
-                    sameColoredCells.Add(curCell);
-            }
-        }
-        // left cell
-        // it has to be in the grid bounds
-        if (indexOfFirstCell - 1 >= 0)
-        {
-            curCell = gridCells[indexOfFirstCell - 1];
-
-            // if same color,
-            // ensure that these cells in the same row
-            if (SameColors(curCell.GetColor(), cell.GetColor()) && TwoCellsInTheSameRow(cell, curCell))
-            {
-                if (!sameColoredCells.Contains(cell))
-                    sameColoredCells.Add(cell);
-                if (!sameColoredCells.Contains(curCell))
-                    sameColoredCells.Add(curCell);
-            }
-        }
-
-        // right cell
-        // it has to be in the grid bounds
-        if (indexOfFirstCell + 1 < gridCells.Count)
-        {
-            curCell = gridCells[indexOfFirstCell + 1];
-
-            // if same color,
-            // ensure that these cells in the same row
-            if (SameColors(curCell.GetColor(), cell.GetColor()) && TwoCellsInTheSameRow(cell, curCell))
-            {
-                if (!sameColoredCells.Contains(cell))
-                    sameColoredCells.Add(cell);
-                if (!sameColoredCells.Contains(curCell))
-                    sameColoredCells.Add(curCell);
-            }
-        }
     }
 
     bool SameColors(Color first, Color second)
